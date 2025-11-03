@@ -68,7 +68,7 @@ jobs:
           find . || dir
 
       # Copy built installers (.exe/.msi) to output/bundle/
-      - name: Copy build output
+      - name: Copy build output 1
         shell: bash
         run: |
           rm -rf output/bundle
@@ -78,7 +78,7 @@ jobs:
           ls -lh output/bundle || dir output/bundle
 
       # Commit and push binaries back to repo
-      - name: Commit and push build outputs
+      - name: Commit and push build outputs 1
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
@@ -93,14 +93,14 @@ jobs:
           fi
 
       # 🔟 Upload as a workflow artifact
-      - name: Upload build artifacts
+      - name: Upload build artifacts 1
         uses: actions/upload-artifact@v4
         with:
           name: tauri-windows
           path: output/bundle/
 
       # 1️⃣1️⃣ Commit and push built files to /releases/<tag>/
-      - name: Commit and push build outputs
+      - name: push release 1
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
