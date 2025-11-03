@@ -1,11 +1,16 @@
 {
   "name": "Tauri Dev",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
   "features": {
     "ghcr.io/devcontainers/features/rust:1": {},
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/desktop-lite": {}
   },
-  "postCreateCommand": "npm install && cargo check"
+
+  "forwardPorts": [6080],
+  "portsAttributes": {
+      "6080": {
+          "label": "Web VNC"
+      }
+  }
 }
