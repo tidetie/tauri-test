@@ -30,14 +30,24 @@ jobs:
         working-directory: ./tauri-app
         run: npm run tauri build
 
+      - name: Verify build output
+        working-directory: ./tauri-app/src-tauri/target/release/bundle
+        shell: bash
+        run: |
+          echo "📦 Contents of bundle folder:"
+          find . || dir
+
       - name: Copy build output
         shell: bash
         run: |
           mkdir -p output/bundle
           cp -r tauri-app/src-tauri/target/release/bundle/* output/bundle/
+          echo "✅ Copied build output to output/bundle:"
+          ls -R output/bundle
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: tauri-windows
           path: output/bundle/
+
