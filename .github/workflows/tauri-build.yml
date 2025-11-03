@@ -3,7 +3,7 @@ name: Build and Release Tauri App (Windows)
 on:
   push:
     tags:
-      - "v*"  # Runs when you push a version tag, like v1.0.0
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          persist-credentials: true  # allows pushing back to the repo
+          persist-credentials: true
 
       # 2️⃣ Setup Node.js
       - name: Setup Node
@@ -27,17 +27,39 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # 4️⃣ Install dependencies
+      # 4️⃣ Cache npm dependencies
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: |
+            tauri-app/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('tauri-app/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # 5️⃣ Cache Rust (Cargo) dependencies
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tauri-app/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('tauri-app/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # 6️⃣ Install dependencies
       - name: Install dependencies
         working-directory: ./tauri-app
         run: npm install
 
-      # 5️⃣ Build the Tauri app
+      # 7️⃣ Build the Tauri app
       - name: Build Tauri app
         working-directory: ./tauri-app
         run: npm run tauri build
 
-      # 6️⃣ Verify what got built
+      # 8️⃣ Verify what got built
       - name: Verify build output
         working-directory: ./tauri-app/src-tauri/target/release/bundle
         shell: bash
@@ -45,24 +67,39 @@ jobs:
           echo "📦 Built files:"
           find . || dir
 
-      # 7️⃣ Copy output to root folder for upload
+      # Copy built installers (.exe/.msi) to output/bundle/
       - name: Copy build output
         shell: bash
         run: |
           rm -rf output/bundle
           mkdir -p output/bundle
-          cp -r tauri-app/src-tauri/target/release/bundle/* output/bundle/
-          echo "✅ Copied build output to output/bundle:"
-          ls -R output/bundle
+          find tauri-app/src-tauri/target/release/bundle -type f \( -name "*.exe" -o -name "*.msi" \) -exec cp {} output/bundle/ \;
+          echo "✅ Final output directory contents:"
+          ls -lh output/bundle || dir output/bundle
 
-      # 8️⃣ Upload as a workflow artifact (optional)
+      # Commit and push binaries back to repo
+      - name: Commit and push build outputs
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [ "$(ls -A output/bundle)" ]; then
+            git config user.name "GitHub Actions"
+            git config user.email "actions@github.com"
+            git add output/bundle
+            git commit -m "Add Windows build outputs for ${GITHUB_REF_NAME}"
+            git push
+          else
+            echo "⚠️ No files found in output/bundle, skipping commit."
+          fi
+
+      # 🔟 Upload as a workflow artifact
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: tauri-windows
           path: output/bundle/
 
-      # 9️⃣ Commit and push built files into /releases/<tag>/
+      # 1️⃣1️⃣ Commit and push built files to /releases/<tag>/
       - name: Commit and push build outputs
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
@@ -76,7 +113,7 @@ jobs:
           git commit -m "Add build outputs for ${TAG_NAME}" || echo "No changes to commit"
           git push
 
-      # 🔟 Create a GitHub Release and attach EXE/MSI files
+      # 1️⃣2️⃣ Create GitHub Release and attach EXE/MSI
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -90,4 +127,3 @@ jobs:
             output/bundle/**/*.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
